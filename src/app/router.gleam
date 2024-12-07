@@ -27,10 +27,7 @@ pub fn router(app: AppContext) {
       Get, _ ->
         view(
           request,
-          page_layout(
-            "Welcome to Sprocket!",
-            csrf.generate(app.secret_key_base),
-          ),
+          page_layout("Sprocket TodoMVC", csrf.generate(app.secret_key_base)),
           page,
           fn(_) { PageProps(app, path: request.path) },
           app.validate_csrf,
