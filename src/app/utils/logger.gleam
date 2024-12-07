@@ -14,7 +14,7 @@ pub type Level {
 /// Configure the Erlang logger to use the log level and output format that we
 /// want, rather than the more verbose Erlang default format.
 ///
-@external(erlang, "sprocket_starter_ffi", "configure_logger_backend")
+@external(erlang, "sprocket_todomvc_ffi", "configure_logger_backend")
 pub fn configure_backend(level: Level) -> Nil
 
 @external(erlang, "logger", "log")

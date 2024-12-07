@@ -57,5 +57,5 @@ pub fn middleware(
   }
 }
 
-@external(erlang, "sprocket_starter_ffi", "priv_directory")
+@external(erlang, "sprocket_todomvc_ffi", "priv_directory")
 pub fn priv_directory() -> String

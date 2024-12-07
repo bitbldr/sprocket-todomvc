@@ -1,4 +1,4 @@
--module(sprocket_starter_ffi).
+-module(sprocket_todomvc_ffi).
 
 -export([configure_logger_backend/1, priv_directory/0]).
 
@@ -15,4 +15,4 @@ configure_logger_backend(Level) ->
     nil.
 
 priv_directory() ->
-    list_to_binary(code:priv_dir(sprocket_starter)).
+    list_to_binary(code:priv_dir(sprocket_todomvc)).

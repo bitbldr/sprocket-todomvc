@@ -1,4 +1,4 @@
-name = "sprocket_starter"
+name = "sprocket_todomvc"
 version = "0.0.1"
 description = "Example starter app for Sprocket, a library for building live views and real-time server components in Gleam"
 
@@ -6,7 +6,7 @@ description = "Example starter app for Sprocket, a library for building live vie
 # your project to the Hex package manager.
 #
 licenses = ["MIT"]
-repository = { type = "github", user = "bitbldr", repo = "sprocket_starter" }
+repository = { type = "github", user = "bitbldr", repo = "sprocket_todomvc" }
 links = [{ title = "Website", href = "https://sprocket.live" }]
 gleam = ">= 1.0.0"
 
@@ -17,7 +17,7 @@ gleam = ">= 1.0.0"
 # Items in this list are "globs" that are matched against module names. See:
 # https://docs.rs/glob/latest/glob/struct.Pattern.html
 #internal_modules = [
-#  "sprocket_starter/internal",
+#  "sprocket_todomvc/internal",
 #]
 
 [dependencies]

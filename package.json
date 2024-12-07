@@ -1,5 +1,5 @@
 {
-  "name": "sprocket_starter",
+  "name": "sprocket_todomvc",
   "version": "0.0.1",
   "license": "MIT",
   "source": "assets/src/app.ts",
