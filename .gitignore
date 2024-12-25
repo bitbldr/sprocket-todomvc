@@ -16,3 +16,4 @@ priv/static
 client/dist
 
 yarn-error.log
+todomvc.sqlite3
