@@ -1,8 +1,10 @@
 import { DoubleClick } from "./hooks/doubleclick";
+import { FormControl } from "./hooks/formControl";
 import { connect } from "sprocket-js";
 
 const hooks = {
   DoubleClick,
+  FormControl,
 };
 
 window.addEventListener("DOMContentLoaded", () => {

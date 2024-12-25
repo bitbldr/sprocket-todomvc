@@ -1,64 +1,149 @@
-import app/app_context.{type AppContext}
+import app/app_context.{type AppContext, AppContext}
 import app/components/page.{PageProps, page}
 import app/layouts/page_layout.{page_layout}
-import app/log_requests
 import app/static
+import app/user
 import app/utils/common.{mist_response}
 import app/utils/csrf
 import app/utils/logger
 import gleam/bit_array
-import gleam/bytes_builder.{type BytesBuilder}
+import gleam/bytes_tree
+import gleam/crypto
 import gleam/erlang
 import gleam/http.{Get}
+import gleam/http/cookie
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response}
-import gleam/http/service.{type Service}
+import gleam/int
+import gleam/list
 import gleam/option.{None}
 import gleam/result
 import gleam/string
 import mist.{type Connection, type ResponseData}
 import mist_sprocket.{view}
 
-pub fn router(app: AppContext) {
-  fn(request: Request(Connection)) -> Response(ResponseData) {
-    use <- rescue_crashes()
+pub fn handle_request(
+  request: Request(Connection),
+  app: AppContext,
+) -> Response(ResponseData) {
+  use <- log_request(request)
+  use <- rescue_crashes()
+  use app <- authenticate(request, app)
+  use <- static.middleware(request)
+  use <- made_with_gleam()
 
-    case request.method, request.path_segments(request) {
-      Get, _ ->
-        view(
-          request,
-          page_layout("Sprocket TodoMVC", csrf.generate(app.secret_key_base)),
-          page,
-          fn(_) { PageProps(app, path: request.path) },
-          app.validate_csrf,
-          None,
-        )
+  case request.method, request.path_segments(request) {
+    Get, _ ->
+      view(
+        request,
+        page_layout("Sprocket TodoMVC", csrf.generate(app.secret_key_base)),
+        page,
+        fn(_) { PageProps(app, path: request.path) },
+        csrf.validate(_, app.secret_key_base),
+        None,
+      )
 
-      _, _ ->
-        not_found()
-        |> response.map(bytes_builder.from_string)
-        |> mist_response()
-    }
+    _, _ ->
+      not_found()
+      |> response.map(bytes_tree.from_string)
+      |> mist_response()
   }
 }
 
-pub fn stack(ctx: AppContext) -> Service(Connection, ResponseData) {
-  router(ctx)
-  |> log_requests.middleware
-  |> static.middleware()
-  |> service.prepend_response_header("made-with", "Gleam")
+pub fn log_request(
+  req: Request(Connection),
+  handler: fn() -> Response(ResponseData),
+) -> Response(ResponseData) {
+  let response = handler()
+  [
+    int.to_string(response.status),
+    " ",
+    string.uppercase(http.method_to_string(req.method)),
+    " ",
+    req.path,
+  ]
+  |> string.concat
+  |> logger.info
+  response
 }
 
-pub fn string_body_middleware(
-  service: Service(String, String),
-) -> Service(BitArray, BytesBuilder) {
-  fn(request: Request(BitArray)) {
-    case bit_array.to_string(request.body) {
-      Ok(body) -> service(request.set_body(request, body))
-      Error(_) -> bad_request()
+const uid_cookie = "uid"
+
+/// Load the user from the `uid` cookie if set, otherwise create a new user row
+/// and assign that in the response cookies.
+///
+/// The `uid` cookie is signed to prevent tampering.
+pub fn authenticate(
+  req: Request(Connection),
+  app: AppContext,
+  next: fn(AppContext) -> Response(ResponseData),
+) -> Response(ResponseData) {
+  let id =
+    get_cookie(req, app.secret_key_base, uid_cookie)
+    |> result.try(int.parse)
+    |> option.from_result
+
+  let #(id, new_user) = case id {
+    option.None -> {
+      logger.info("Creating a new user")
+      let user = user.insert_user(app.db)
+      #(user, True)
     }
-    |> response.map(bytes_builder.from_string)
+    option.Some(id) -> #(id, False)
   }
+  let app = AppContext(..app, user_id: id)
+  let resp = next(app)
+
+  case new_user {
+    True -> {
+      let id = int.to_string(id)
+      let year = 60 * 60 * 24 * 365
+      set_cookie(resp, app.secret_key_base, uid_cookie, id, year)
+    }
+    False -> resp
+  }
+}
+
+fn get_cookie(
+  req: Request(Connection),
+  secret_key_base: String,
+  name: String,
+) -> Result(String, Nil) {
+  use value <- result.try(
+    req
+    |> request.get_cookies
+    |> list.key_find(name),
+  )
+  use value <- result.try(
+    crypto.verify_signed_message(value, <<secret_key_base:utf8>>),
+  )
+  bit_array.to_string(value)
+}
+
+pub fn set_cookie(
+  response response: Response(ResponseData),
+  secret_key_base secret_key_base: String,
+  name name: String,
+  value value: String,
+  max_age max_age: Int,
+) -> Response(ResponseData) {
+  let attributes =
+    cookie.Attributes(
+      ..cookie.defaults(http.Https),
+      max_age: option.Some(max_age),
+    )
+  let value =
+    crypto.sign_message(<<value:utf8>>, <<secret_key_base:utf8>>, crypto.Sha512)
+  response
+  |> response.set_cookie(name, value, attributes)
+}
+
+fn made_with_gleam(
+  next: fn() -> Response(ResponseData),
+) -> Response(ResponseData) {
+  let response = next()
+  response
+  |> response.prepend_header("made-with", "Gleam")
 }
 
 pub fn method_not_allowed() -> Response(String) {
@@ -85,23 +170,6 @@ pub fn internal_server_error() -> Response(String) {
   |> response.prepend_header("content-type", "text/plain")
 }
 
-pub fn http_service(
-  req: Request(Connection),
-  service: Service(BitArray, BytesBuilder),
-) -> Response(ResponseData) {
-  req
-  |> mist.read_body(1024 * 1024 * 10)
-  |> result.map(fn(http_req: Request(BitArray)) {
-    http_req
-    |> service()
-    |> mist_response()
-  })
-  |> result.unwrap(
-    response.new(500)
-    |> response.set_body(mist.Bytes(bytes_builder.new())),
-  )
-}
-
 pub fn rescue_crashes(
   handler: fn() -> Response(ResponseData),
 ) -> Response(ResponseData) {
@@ -111,7 +179,7 @@ pub fn rescue_crashes(
       logger.error(string.inspect(error))
 
       internal_server_error()
-      |> response.map(bytes_builder.from_string)
+      |> response.map(bytes_tree.from_string)
       |> mist_response()
     }
   }
