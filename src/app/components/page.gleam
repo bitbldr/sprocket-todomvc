@@ -8,7 +8,6 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import gleam/result
 import sprocket/component.{component, render}
 import sprocket/context.{type Context}
 import sprocket/hooks.{type Cmd, client, handler, reducer}
@@ -118,7 +117,6 @@ pub fn page(ctx: Context, props: PageProps) {
                     component(
                       item,
                       ItemProps(
-                        id: i.id,
                         content: i.content,
                         completed: i.completed,
                         on_mark: fn() { mark_completed(i, app, refresh_items) },

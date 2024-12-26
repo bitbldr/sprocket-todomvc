@@ -1,7 +1,6 @@
 import app/app_context.{AppContext}
 import app/database
 import app/router
-import app/utils/common
 import app/utils/logger
 import envoy
 import gleam/erlang/process
@@ -40,6 +39,5 @@ fn load_port() -> Int {
 
 fn load_secret_key_base() -> String {
   envoy.get("SECRET_KEY_BASE")
-  |> result.unwrap(common.random_string(64))
-  // |> result.unwrap("27434b28994f498182d459335258fb6e")
+  |> result.unwrap("secret")
 }

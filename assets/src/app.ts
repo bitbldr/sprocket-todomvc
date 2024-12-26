@@ -1,10 +1,12 @@
 import { DoubleClick } from "./hooks/doubleclick";
 import { FormControl } from "./hooks/formControl";
+import { Focuser } from "./hooks/focuser";
 import { connect } from "sprocket-js";
 
 const hooks = {
   DoubleClick,
   FormControl,
+  Focuser,
 };
 
 window.addEventListener("DOMContentLoaded", () => {
