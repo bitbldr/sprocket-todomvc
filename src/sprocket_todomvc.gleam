@@ -1,6 +1,7 @@
 import app/app_context.{AppContext}
 import app/database
 import app/router
+import app/utils/common.{priv_directory}
 import app/utils/logger
 import envoy
 import gleam/erlang/process
@@ -15,10 +16,12 @@ pub fn main() {
 
   let secret_key_base = load_secret_key_base()
   let port = load_port()
+  let db_pathname = priv_directory() <> "/" <> db_name
 
-  let assert Ok(_) = database.with_connection(db_name, database.migrate_schema)
+  let assert Ok(_) =
+    database.with_connection(db_pathname, database.migrate_schema)
 
-  use db <- database.with_connection(db_name)
+  use db <- database.with_connection(db_pathname)
 
   let app = AppContext(secret_key_base: secret_key_base, db: db, user_id: 0)
 

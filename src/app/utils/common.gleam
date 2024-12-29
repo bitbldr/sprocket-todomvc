@@ -10,6 +10,9 @@ pub fn mist_response(response: Response(BytesTree)) -> Response(ResponseData) {
   |> response.set_body(mist.Bytes(response.body))
 }
 
+@external(erlang, "sprocket_todomvc_ffi", "priv_directory")
+pub fn priv_directory() -> String
+
 /// Generate a random string of the given length
 pub fn random_string(length: Int) -> String {
   crypto.strong_random_bytes(length)

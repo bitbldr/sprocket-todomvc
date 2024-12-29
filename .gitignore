@@ -13,7 +13,7 @@ coverage
 .DS_Store
 
 priv/static
+priv/todomvc.sqlite3
 client/dist
 
 yarn-error.log
-todomvc.sqlite3

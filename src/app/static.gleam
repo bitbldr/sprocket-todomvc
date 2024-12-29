@@ -1,4 +1,4 @@
-import app/utils/common.{mist_response}
+import app/utils/common.{mist_response, priv_directory}
 import gleam/bytes_tree
 import gleam/http/request.{type Request}
 import gleam/http/response.{type Response, Response}
@@ -54,6 +54,3 @@ pub fn middleware(
     Error(_) -> next()
   }
 }
-
-@external(erlang, "sprocket_todomvc_ffi", "priv_directory")
-pub fn priv_directory() -> String
