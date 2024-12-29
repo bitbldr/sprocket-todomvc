@@ -119,6 +119,10 @@ pub fn page(ctx: Context, props: PageProps) {
                       ItemProps(
                         content: i.content,
                         completed: i.completed,
+                        on_edit: fn(content) {
+                          update_item(i.id, content, app, refresh_items)
+                          Nil
+                        },
                         on_mark: fn() { mark_completed(i, app, refresh_items) },
                         on_delete: fn() {
                           delete_item(i.id, app, refresh_items)
@@ -185,4 +189,19 @@ fn delete_item(id: Int, app: AppContext, refresh_cb: fn() -> Nil) {
   items.delete_item(id, app.user_id, app.db)
 
   refresh_cb()
+}
+
+fn update_item(
+  id: Int,
+  content: String,
+  app: AppContext,
+  refresh_items: fn() -> Nil,
+) {
+  case items.update_item(id, app.user_id, content, app.db) {
+    Ok(_) -> refresh_items()
+    Error(e) ->
+      e
+      |> error.humanize()
+      |> logger.error()
+  }
 }
