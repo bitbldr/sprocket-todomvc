@@ -80,8 +80,7 @@ pub fn flash_messages(flash: Flash) {
       div([classes([Some("flash"), Some(flash_class(m.level))])], [
         div_text([class("flash-content")], m.message),
         div([class("flash-close")], [
-          // button_text([events.on_click(fn(_) { flash.clear(m.id) })], "x"),
-          button_text([], "x"),
+          button_text([events.on_click(fn(_) { flash.clear(m.id) })], "x"),
         ]),
       ])
     }),

@@ -11,7 +11,7 @@ import gleam/list
 import gleam/option.{type Option, None, Some}
 import sprocket/component.{component, render}
 import sprocket/context.{type Context}
-import sprocket/hooks.{type Cmd, client, handler, reducer}
+import sprocket/hooks.{type Cmd, client, reducer}
 import sprocket/html/attributes.{
   autocomplete, class, href, id, name, placeholder,
 }
@@ -64,13 +64,13 @@ pub fn page(ctx: Context, props: PageProps) {
 
   use ctx, client_form, dispatch_client_form <- client(ctx, "FormControl", None)
 
-  use ctx, create_item_on_submit <- handler(ctx, fn(e) {
+  let create_item_on_submit = fn(e) {
     case events.decode_form_data(e) {
       Ok(data) -> {
         case dict.get(data, "content") {
           Ok(value) -> {
             create_item(value, app, flash, refresh_items)
-            let assert Ok(_) = dispatch_client_form("reset", None)
+            let _ = dispatch_client_form("reset", None)
 
             Nil
           }
@@ -79,7 +79,7 @@ pub fn page(ctx: Context, props: PageProps) {
       }
       Error(_) -> Nil
     }
-  })
+  }
 
   let todo_count =
     items

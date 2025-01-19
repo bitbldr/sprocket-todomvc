@@ -3,7 +3,7 @@ import gleam/option.{None, Some, values}
 import gleam/string
 import sprocket/component.{render}
 import sprocket/context.{type Context}
-import sprocket/hooks.{client, handler, state}
+import sprocket/hooks.{client, state}
 import sprocket/html/attributes.{
   autocomplete, checked, class, classes, input_type, value,
 }
@@ -31,18 +31,18 @@ pub fn item(ctx: Context, props: ItemProps) {
     None,
   )
 
-  use ctx, toggle_completion <- handler(ctx, fn(_) { on_mark() })
+  let toggle_completion = fn(_) { on_mark() }
 
-  use ctx, start_editing <- handler(ctx, fn(_) {
+  let start_editing = fn(_) {
     set_is_editing(True)
-    let assert Ok(_) = dispatch_client_focuser("focus", None)
+    let _ = dispatch_client_focuser("focus", None)
 
     Nil
-  })
+  }
 
-  use ctx, cancel_edit <- handler(ctx, fn(_) { set_is_editing(False) })
+  let cancel_edit = fn(_) { set_is_editing(False) }
 
-  use ctx, update_edit_on_change <- handler(ctx, fn(e) {
+  let update_edit_on_change = fn(e) {
     case events.decode_target_value(e) {
       Ok(value) -> {
         value
@@ -51,18 +51,18 @@ pub fn item(ctx: Context, props: ItemProps) {
       }
       _ -> Nil
     }
-  })
+  }
 
-  use ctx, save_edit_on_enter <- handler(ctx, fn(e) {
+  let save_edit_on_enter = fn(e) {
     case events.decode_key_event(e) {
       Ok(events.KeyEvent(key: "Enter", ..)) -> {
         set_is_editing(False)
       }
       _ -> Nil
     }
-  })
+  }
 
-  use ctx, delete <- handler(ctx, fn(_) { on_delete() })
+  let delete = fn(_) { on_delete() }
 
   let item_class = case completed {
     True -> "completed"
