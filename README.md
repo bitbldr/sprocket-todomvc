@@ -16,7 +16,7 @@ To install this project, make sure you have [Gleam](https://gleam.run) and [Yarn
 1. Clone the repository from GitHub.
 2. Install the required gleam dependencies using `gleam deps download`.
 3. Install the required client dependencies using `npm install` or `yarn`.
-4. Start the project using `yarn watch`.
+4. Start the project using `yarn start`.
 
 ## Usage
 
