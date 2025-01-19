@@ -1,18 +1,22 @@
-# Sprocket Starter
-Companion starter repo for [Sprocket](https://github.com/bitbldr/sprocket), a real-time server-side components library for Gleam.
+# Sprocket Todo MVC
+Example codebase for a Todo MVC application using Sprocket.
 
-## Introduction
+![todo](./todo.png)
 
-This project is built using Gleam and TypeScript, and managed with Yarn.
+For starting a new project, check out the [Sprocket Starter](https://github.com/bitbldr/sprocket_starter) project.
+
+Based on:
+- https://github.com/bitbldr/sprocket_starter
+- https://github.com/gleam-lang/example-todomvc
 
 ## Installation
 
-To install this project, follow these steps:
+To install this project, make sure you have [Gleam](https://gleam.run) and [Yarn](https://classic.yarnpkg.com/lang/en/docs/install) installed, then follow these steps:
 
 1. Clone the repository from GitHub.
-2. Install the required dependencies using `npm install` or `yarn install`.
-3. Build the project using `npm run build` or `yarn build`.
-4. Start the project using `npm run watch` or `yarn watch`.
+2. Install the required gleam dependencies using `gleam deps download`.
+3. Install the required client dependencies using `npm install` or `yarn`.
+4. Start the project using `yarn watch`.
 
 ## Usage
 
