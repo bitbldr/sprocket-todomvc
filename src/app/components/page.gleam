@@ -3,17 +3,18 @@ import app/components/item.{ItemProps, item}
 import app/database
 import app/error
 import app/flash.{type Flash, flash_messages}
-import app/items.{type Item}
+import app/items.{type Counts, type Item}
+import app/page_filter.{type Filter, Active, All, Completed}
 import app/utils/logger
 import gleam/dict
 import gleam/int
 import gleam/list
-import gleam/option.{type Option, None, Some}
+import gleam/option.{None, Some}
 import sprocket/component.{component, render}
 import sprocket/context.{type Context}
 import sprocket/hooks.{type Cmd, client, reducer}
 import sprocket/html/attributes.{
-  autocomplete, class, href, id, name, placeholder,
+  autocomplete, class, classes, href, id, name, placeholder,
 }
 import sprocket/html/elements.{
   a, button, div, footer, form, h1, header, input, keyed, li, section, span,
@@ -22,26 +23,41 @@ import sprocket/html/elements.{
 import sprocket/html/events
 
 type Model {
-  Model(items: Option(List(Item)))
+  Loading
+  Model(items: List(Item), counts: Counts)
 }
 
 type Msg {
-  LoadItems(Int, database.Connection)
-  ItemsLoaded(List(Item))
+  LoadItems(Int, filter: Filter, database.Connection)
+  ItemsLoaded(List(Item), Counts)
 }
 
-fn init(user_id: Int, db: database.Connection) -> #(Model, List(Cmd(Msg))) {
-  #(Model(None), [load_items(user_id, db)])
+fn init(
+  user_id: Int,
+  filter: page_filter.Filter,
+  db: database.Connection,
+) -> #(Model, List(Cmd(Msg))) {
+  #(Loading, [load_items(user_id, filter, db)])
 }
 
-fn load_items(user_id: Int, db: database.Connection) -> Cmd(Msg) {
-  fn(dispatch) { dispatch(ItemsLoaded(items.list_items(user_id, db))) }
+fn load_items(user_id: Int, filter: Filter, db: database.Connection) -> Cmd(Msg) {
+  fn(dispatch) {
+    let loaded_items = case filter {
+      All -> items.list_items(user_id, db)
+      Active -> items.filtered_items(user_id, False, db)
+      Completed -> items.filtered_items(user_id, True, db)
+    }
+
+    let counts = items.get_counts(user_id, db)
+
+    dispatch(ItemsLoaded(loaded_items, counts))
+  }
 }
 
-fn update(_model: Model, msg: Msg) {
+fn update(model: Model, msg: Msg) {
   case msg {
-    LoadItems(user_id, db) -> #(Model(None), [load_items(user_id, db)])
-    ItemsLoaded(items) -> #(Model(Some(items)), [])
+    LoadItems(user_id, filter, db) -> #(model, [load_items(user_id, filter, db)])
+    ItemsLoaded(items, counts) -> #(Model(items, counts), [])
   }
 }
 
@@ -50,17 +66,19 @@ pub type PageProps {
 }
 
 pub fn page(ctx: Context, props: PageProps) {
-  let PageProps(app, _path) = props
+  let PageProps(app, path) = props
 
-  use ctx, Model(items), dispatch <- reducer(
+  let filter = page_filter.filter_from_path(path)
+
+  use ctx, model, dispatch <- reducer(
     ctx,
-    init(app.user_id, app.db),
+    init(app.user_id, filter, app.db),
     update,
   )
 
   use ctx, flash <- flash.flash(ctx)
 
-  let refresh_items = fn() { dispatch(LoadItems(app.user_id, app.db)) }
+  let refresh_items = fn() { dispatch(LoadItems(app.user_id, filter, app.db)) }
 
   use ctx, client_form, dispatch_client_form <- client(ctx, "FormControl", None)
 
@@ -81,12 +99,8 @@ pub fn page(ctx: Context, props: PageProps) {
     }
   }
 
-  let todo_count =
-    items
-    |> option.map(fn(items) {
-      items
-      |> list.count(fn(i) { !i.completed })
-    })
+  // render loading message until the model is loaded, then unpack items and counts
+  use items, counts <- render_loading_until(ctx, model)
 
   render(
     ctx,
@@ -113,46 +127,65 @@ pub fn page(ctx: Context, props: PageProps) {
             ),
           ]),
           section([class("main")], [
-            ul([id("todo-list"), class("todo-list")], case items {
-              Some(items) ->
-                list.map(items, fn(i: Item) {
-                  keyed(
-                    int.to_string(i.id),
-                    component(
-                      item,
-                      ItemProps(
-                        content: i.content,
-                        completed: i.completed,
-                        on_edit: fn(content) {
-                          update_item(i.id, content, app, flash, refresh_items)
-                          Nil
-                        },
-                        on_mark: fn() {
-                          mark_completed(i, app, flash, refresh_items)
-                        },
-                        on_delete: fn() {
-                          delete_item(i.id, app, refresh_items)
-                        },
-                      ),
+            ul(
+              [id("todo-list"), class("todo-list")],
+              list.map(items, fn(i: Item) {
+                keyed(
+                  int.to_string(i.id),
+                  component(
+                    item,
+                    ItemProps(
+                      content: i.content,
+                      completed: i.completed,
+                      on_edit: fn(content) {
+                        update_item(i.id, content, app, flash, refresh_items)
+                        Nil
+                      },
+                      on_mark: fn() {
+                        mark_completed(i, app, flash, refresh_items)
+                      },
+                      on_delete: fn() { delete_item(i.id, app, refresh_items) },
                     ),
-                  )
-                })
-              None -> []
-            }),
+                  ),
+                )
+              }),
+            ),
           ]),
           footer([class("footer")], [
-            case todo_count {
-              Some(count) ->
-                span([id("todo-count"), class("todo-count")], [
-                  strong([], [text(int.to_string(count))]),
-                  text(" todos left"),
-                ])
-              None -> span([], [])
-            },
+            span([id("todo-count"), class("todo-count")], case filter {
+              All -> [
+                strong([], [text(int.to_string(counts.active))]),
+                text(" todos left"),
+              ]
+              Active -> [
+                strong([], [text(int.to_string(counts.active))]),
+                text(" active"),
+              ]
+              Completed -> [
+                strong([], [text(int.to_string(counts.completed))]),
+                text(" completed"),
+              ]
+            }),
             ul([class("filters")], [
-              li([], [a([href("/"), class("selected")], [text("All")])]),
-              li([], [a([href("/active")], [text("Active")])]),
-              li([], [a([href("/completed")], [text("Completed")])]),
+              li([], [
+                a([href("/"), classes([maybe_selected(All, filter)])], [
+                  text("All"),
+                ]),
+              ]),
+              li([], [
+                a([href("/active"), classes([maybe_selected(Active, filter)])], [
+                  text("Active"),
+                ]),
+              ]),
+              li([], [
+                a(
+                  [
+                    href("/completed"),
+                    classes([maybe_selected(Completed, filter)]),
+                  ],
+                  [text("Completed")],
+                ),
+              ]),
             ]),
             button(
               [
@@ -167,6 +200,24 @@ pub fn page(ctx: Context, props: PageProps) {
       ]),
     ]),
   )
+}
+
+fn render_loading_until(ctx: Context, model: Model, cb) {
+  case model {
+    Loading ->
+      render(
+        ctx,
+        div([id("app"), class("container mx-auto px-4")], [text("Loading...")]),
+      )
+    Model(items, counts) -> cb(items, counts)
+  }
+}
+
+fn maybe_selected(filter: Filter, current: Filter) {
+  case filter == current {
+    True -> Some("selected")
+    False -> None
+  }
 }
 
 fn mark_completed(
@@ -193,14 +244,10 @@ fn create_item(
   content: String,
   app: AppContext,
   flash: Flash,
-  refresh_cb: fn() -> Nil,
+  refresh_items: fn() -> Nil,
 ) {
   case items.insert_item(content, app.user_id, app.db) {
-    Ok(_) -> {
-      refresh_cb()
-
-      flash.put(flash.Success, "Item created")
-    }
+    Ok(_) -> refresh_items()
     Error(e) -> {
       e
       |> error.humanize()
@@ -211,10 +258,10 @@ fn create_item(
   }
 }
 
-fn delete_item(id: Int, app: AppContext, refresh_cb: fn() -> Nil) {
+fn delete_item(id: Int, app: AppContext, refresh_items: fn() -> Nil) {
   items.delete_item(id, app.user_id, app.db)
 
-  refresh_cb()
+  refresh_items()
 }
 
 fn update_item(
