@@ -32,7 +32,7 @@ type Msg {
 pub type Flash {
   Flash(
     get: fn() -> List(FlashMessage),
-    put: fn(FlashLevel, String) -> Nil,
+    put: fn(String, FlashLevel) -> String,
     clear: fn(Unique(FlashId)) -> Nil,
   )
 }
@@ -63,7 +63,10 @@ pub fn flash(ctx: Context, cb) {
     ctx,
     Flash(
       get: fn() { model.messages },
-      put: fn(level, message) { dispatch(Push(level, message)) },
+      put: fn(message, level) {
+        dispatch(Push(level, message))
+        message
+      },
       clear: fn(id) { dispatch(Clear(id)) },
     ),
   )

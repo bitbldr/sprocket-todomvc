@@ -232,8 +232,9 @@ fn mark_completed(
       e
       |> error.humanize()
       |> logger.error()
+      |> flash.put(flash.Error)
 
-      flash.put(flash.Error, "Failed to toggle completion")
+      Nil
     }
   }
 
@@ -252,8 +253,9 @@ fn create_item(
       e
       |> error.humanize()
       |> logger.error()
+      |> flash.put(flash.Error)
 
-      flash.put(flash.Error, "Failed to create item")
+      Nil
     }
   }
 }
@@ -277,8 +279,9 @@ fn update_item(
       e
       |> error.humanize()
       |> logger.error()
+      |> flash.put(flash.Error)
 
-      flash.put(flash.Error, "Failed to update item")
+      Nil
     }
   }
 }
