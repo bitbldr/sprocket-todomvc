@@ -2,6 +2,7 @@ import app/app_context.{type AppContext}
 import app/components/item.{ItemProps, item}
 import app/database
 import app/error
+import app/flash.{type Flash, flash_messages}
 import app/items.{type Item}
 import app/utils/logger
 import gleam/dict
@@ -57,6 +58,8 @@ pub fn page(ctx: Context, props: PageProps) {
     update,
   )
 
+  use ctx, flash <- flash.flash(ctx)
+
   let refresh_items = fn() { dispatch(LoadItems(app.user_id, app.db)) }
 
   use ctx, client_form, dispatch_client_form <- client(ctx, "FormControl", None)
@@ -66,7 +69,7 @@ pub fn page(ctx: Context, props: PageProps) {
       Ok(data) -> {
         case dict.get(data, "content") {
           Ok(value) -> {
-            create_item(value, app, refresh_items)
+            create_item(value, app, flash, refresh_items)
             let assert Ok(_) = dispatch_client_form("reset", None)
 
             Nil
@@ -88,6 +91,7 @@ pub fn page(ctx: Context, props: PageProps) {
   render(
     ctx,
     div([id("app"), class("container mx-auto px-4")], [
+      flash_messages(flash),
       div([class("todomvc-wrapper")], [
         section([class("todoapp")], [
           header([class("header")], [
@@ -120,10 +124,12 @@ pub fn page(ctx: Context, props: PageProps) {
                         content: i.content,
                         completed: i.completed,
                         on_edit: fn(content) {
-                          update_item(i.id, content, app, refresh_items)
+                          update_item(i.id, content, app, flash, refresh_items)
                           Nil
                         },
-                        on_mark: fn() { mark_completed(i, app, refresh_items) },
+                        on_mark: fn() {
+                          mark_completed(i, app, flash, refresh_items)
+                        },
                         on_delete: fn() {
                           delete_item(i.id, app, refresh_items)
                         },
@@ -163,25 +169,45 @@ pub fn page(ctx: Context, props: PageProps) {
   )
 }
 
-fn mark_completed(i: Item, app: AppContext, refresh_items: fn() -> Nil) {
+fn mark_completed(
+  i: Item,
+  app: AppContext,
+  flash: Flash,
+  refresh_items: fn() -> Nil,
+) {
   case items.toggle_completion(i.id, app.user_id, app.db) {
     Ok(_) -> refresh_items()
-    Error(e) ->
+    Error(e) -> {
       e
       |> error.humanize()
       |> logger.error()
+
+      flash.put(flash.Error, "Failed to toggle completion")
+    }
   }
 
   Nil
 }
 
-fn create_item(content: String, app: AppContext, refresh_cb: fn() -> Nil) {
+fn create_item(
+  content: String,
+  app: AppContext,
+  flash: Flash,
+  refresh_cb: fn() -> Nil,
+) {
   case items.insert_item(content, app.user_id, app.db) {
-    Ok(_) -> refresh_cb()
-    Error(e) ->
+    Ok(_) -> {
+      refresh_cb()
+
+      flash.put(flash.Success, "Item created")
+    }
+    Error(e) -> {
       e
       |> error.humanize()
       |> logger.error()
+
+      flash.put(flash.Error, "Failed to create item")
+    }
   }
 }
 
@@ -195,13 +221,17 @@ fn update_item(
   id: Int,
   content: String,
   app: AppContext,
+  flash: Flash,
   refresh_items: fn() -> Nil,
 ) {
   case items.update_item(id, app.user_id, content, app.db) {
     Ok(_) -> refresh_items()
-    Error(e) ->
+    Error(e) -> {
       e
       |> error.humanize()
       |> logger.error()
+
+      flash.put(flash.Error, "Failed to update item")
+    }
   }
 }

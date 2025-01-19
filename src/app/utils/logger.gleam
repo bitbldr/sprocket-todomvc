@@ -20,19 +20,20 @@ pub fn configure_backend(level: Level) -> Nil
 @external(erlang, "logger", "log")
 fn erlang_log(a: Level, b: String) -> Dynamic
 
-pub fn log(level: Level, message: String) -> Nil {
+pub fn log(level: Level, message: String) -> String {
   erlang_log(level, message)
-  Nil
+
+  message
 }
 
-pub fn info(message: String) -> Nil {
+pub fn info(message: String) -> String {
   log(Info, message)
 }
 
-pub fn warn(message: String) -> Nil {
+pub fn warn(message: String) -> String {
   log(Warning, message)
 }
 
-pub fn error(message: String) -> Nil {
+pub fn error(message: String) -> String {
   log(Error, message)
 }
