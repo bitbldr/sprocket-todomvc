@@ -7,8 +7,6 @@ import sprocket/html/attributes.{class, classes}
 import sprocket/html/elements.{button_text, div, div_text}
 import sprocket/html/events
 
-pub const flash_provider_key = "flash"
-
 pub type FlashLevel {
   Info
   Success
